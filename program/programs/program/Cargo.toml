@@ -1,0 +1,21 @@
+[package]
+name = "stakeup"
+version = "0.1.0"
+description = "Stake with your Friends and Grow!"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "stakeup"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+
+
+[dependencies]
+anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }

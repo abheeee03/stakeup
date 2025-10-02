@@ -1,0 +1,80 @@
+// schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String    @id @default(cuid())
+  wallet    String    @unique // Solana public key
+  username  String?   
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  stakes    UserStake[]
+  challengesCreated Challenge[] @relation("ChallengeCreator")
+  challengesJoined  ChallengeParticipant[]
+  challengeResultsWon ChallengeResult[] @relation("ChallengeResultWinner")
+}
+
+// A fitness challenge (2-player duel or community challenge)
+model Challenge {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  creator     User        @relation("ChallengeCreator", fields: [creatorId], references: [id])
+  creatorId   String
+  poolPda     String      // PDA address of the pool created on-chain
+  status      ChallengeStatus @default(PENDING)
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime    @default(now())
+
+  participants ChallengeParticipant[]
+  results      ChallengeResult[]
+}
+
+model ChallengeParticipant {
+  id          String    @id @default(cuid())
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+  challenge   Challenge @relation(fields: [challengeId], references: [id])
+  challengeId String
+  joinedAt    DateTime  @default(now())
+  stakeAmount Int       // how much SOL this user staked
+  userStakePda String   // PDA derived for this user's stake
+}
+
+// Who won / lost — decided off-chain, but tied back to on-chain distribute
+model ChallengeResult {
+  id          String    @id @default(cuid())
+  challenge   Challenge @relation(fields: [challengeId], references: [id])
+  challengeId String
+  winner      User      @relation("ChallengeResultWinner", fields: [winnerId], references: [id])
+  winnerId    String
+  decidedAt   DateTime  @default(now())
+  txSignature String?   // optional: Solana tx sig of distribute_reward
+}
+
+// Mirror of on-chain stake accounts for easier tracking
+model UserStake {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  poolPda   String   // PDA of pool
+  stakePda  String   // PDA of user_stake account
+  amount    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum ChallengeStatus {
+  PENDING   // not started
+  ACTIVE    // in progress
+  COMPLETED // finished
+  CANCELLED
+}
