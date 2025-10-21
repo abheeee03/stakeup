@@ -6,7 +6,9 @@ import WalletAdapterProvider from './WalletProvider'
 
 export function Providers({children}: { children: React.ReactNode }) {
   return (
-    <HeroUIProvider>
+    <HeroUIProvider
+    
+    >
       <WalletAdapterProvider>
       {children}
       </WalletAdapterProvider>
