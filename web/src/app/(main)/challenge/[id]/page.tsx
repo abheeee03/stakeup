@@ -1,15 +1,10 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { Card, CardHeader, CardBody } from "@heroui/card";
-import { Avatar, AvatarGroup, AvatarIcon } from "@heroui/avatar";
-import { Badge } from "@heroui/badge";
-import { Tooltip } from "@heroui/tooltip";
-import { Tabs, Tab } from "@heroui/tabs";
 import { addToast } from "@heroui/toast";
 import { Button } from "@heroui/button";
-import { Skeleton } from "@heroui/react";
+import { Card, CardBody, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Skeleton, Snippet, Tooltip, useDisclosure, User } from "@heroui/react";
 
 type User = {
   id: string;
@@ -43,31 +38,39 @@ type Challenge = {
   end_date: string;
   duration_days: number;
   stake_amount: number;
+  invite_code: string;
 };
 
-function secondsToHMS(s: number) {
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  return [
-    h > 0 ? `${h}h` : null,
-    m > 0 ? `${m}m` : null,
-    `${sec}s`
-  ].filter(Boolean).join(" ");
+function StreakCard(){
+  return <div className="flex flex-col">
+    <Tooltip
+    color="foreground"
+    content="Focused 2 Hrs"
+    >
+     <Card>
+        <div className="bg-green-900 h-10 w-10"></div>
+      </Card>
+    </Tooltip>
+      <p className="text-sm text-center font-medium">
+          Day 1
+      </p>
+  </div>
 }
 
-function statusColor(status: Challenge["status"]) {
-  switch (status) {
-    case "pending":
-      return "warning";
-    case "active":
-      return "primary";
-    case "completed":
-      return "success";
-    default:
-      return "default";
+function UserCard({name, streak, time}:{name: string,streak: string, time: number}){
+  return <User
+  avatarProps={{
+    name: name
+  }}
+  description={
+    <>
+      <span>Streak: {streak}, Todays Focused Time: {time}</span>
+    </>
   }
+  name={name}
+/>
 }
+
 
 export default function ChallengePage() {
   const params = useParams<{ id: string }>();
@@ -75,12 +78,13 @@ export default function ChallengePage() {
   const challengeId = params.id as string;
   const invite = search.get("invite");
   const supabase = useMemo(() => createClient(), []);
-
+  const {isOpen, onOpen, onClose} = useDisclosure();
   // Main challenge/page state
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [me, setMe] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
+  const router = useRouter()
   // Fetch challenge and participants
   useEffect(() => {
     if (!challengeId) return;
@@ -172,24 +176,91 @@ export default function ChallengePage() {
     }));  
 
   return (
-    <div className="min-h-screen w-full px-40 py-12 flex items-center justify-start flex-col">
+    <>
+    <div className="fixed w-full flex items-center justify-between px-4 py-3">
+    <span className="font-medium">Total Pool: 2 SOL</span>
+      <button onClick={onOpen} className="cursor-pointer">
+        Invite Friends
+      </button>
+    </div>
+    <Modal isOpen={isOpen} size={"md"} onClose={onClose}>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">Invite Friends</ModalHeader>
+              <ModalBody>
+                <h2>Share this Link</h2>
+                <Snippet
+                hideSymbol
+                  tooltipProps={{
+                    color: "foreground",
+                    content: "Copy this snippet",
+                    disableAnimation: true,
+                    placement: "right",
+                    closeDelay: 0,
+                  }}
+                >
+                 <span>
+                   {process.env.NEXT_PUBLIC_BASE_URL}/join/{challenge?.invite_code}
+                  </span>
+              </Snippet>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="success" onPress={onClose}>
+                  Done
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+    <div className="min-h-screen w-full px-40 py-16 flex items-center justify-start flex-col">
         <div className="pb-7 w-full flex items-center justify-between border-b-2 border-default-200">
           <Skeleton className="rounded-xl" isLoaded={!loading}>
             <div className="flex flex-col">
               <h1 className="text-3xl font-semibold">{challenge?.title}</h1>
               <p className="text-default-600 text-xl">{challenge?.description}</p>
+              
             </div>
           </Skeleton>
             <div className="">
-              <Button color="primary">
+              <Button onPress={()=>{
+                router.push(`/timer/${challenge?.id}`)
+              }} color="primary">
                 Start Focusing
               </Button>
             </div>
         </div>
 
-        <div className="">
-          
+        <div className="w-full min-h-72 flex flex-col items-start justify-start py-3">
+        
+
+          <h1 className="text-xl font-medium">
+             Your Streak
+          </h1>
+
+          <div className="mt-4 flex flex-wrap gap-8">
+           <StreakCard/>
+           <StreakCard/>
+           <StreakCard/>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-start justify-start w-full min-h-72">
+          <h1 className="text-xl font-medium">Other Participants</h1>
+          <div className="mt-4 flex flex-col gap-8">
+            {
+              participants.map((user)=>{
+                return <UserCard
+                name={user.user.username}
+                streak={"0"}
+                time={user.total_focus_time}
+                />
+              })
+            }
+          </div>
         </div>
     </div>
+    </>
   );
 }

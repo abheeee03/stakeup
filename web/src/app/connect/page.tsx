@@ -23,7 +23,7 @@ import {
 import "@solana/wallet-adapter-react-ui/styles.css";
 import { User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function SignInButton() {
   const wallet = useWallet();
@@ -214,6 +214,18 @@ function SignInButton() {
     }
   };
 
+  const checkUser = async ()=>{
+    const logged = await supabase.auth.getUser()
+    if(logged.data.user){
+      router.push('/home')
+    }
+  }
+
+  useEffect(() => {
+    checkUser()
+  }, [])
+  
+
   return (
     <>
       <Modal
@@ -268,13 +280,7 @@ function SignInButton() {
 
 function App() {
   return (
-    <ConnectionProvider endpoint={process.env.NEXT_PUBLIC_RPC_URL!}>
-      <WalletProvider wallets={[]} autoConnect>
-        <WalletModalProvider>
           <SignInButton />
-        </WalletModalProvider>
-      </WalletProvider>
-    </ConnectionProvider>
   );
 }
 

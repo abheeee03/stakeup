@@ -10,8 +10,16 @@ type ChallengeType = {
   invite_code: string,
   min_players: string,
   id: number,
-  owner: string,
-  status: string
+  creator: {
+    username: string,
+    id: string,
+    wallet_address: string
+  }
+  creator_id: string,
+  duration_days: string,
+  stake_amount: string,
+  status: string,
+  description: string
 }
 
 function JoinPage() {
@@ -22,14 +30,19 @@ function JoinPage() {
   const router = useRouter()
   const getChallenge = async ()=>{
     setLoading(true)
-    const {data} = await supabase
-    .from("challenges")
-    .select("*")
-    .eq("invite_code", params.invite)
-    if(data){
+    const { data, error } = await supabase
+      .from("challenges")
+      .select("*, creator:users(id, username, wallet_address)") // join users table on creator_id
+      .eq("invite_code", params.invite)
+
+    if (data && data.length > 0) {
       setLoading(false)
-      console.log(data);
-      setChallenge(data[0])
+      console.log(data)
+      // attach challenge and its creator details
+      setChallenge({
+        ...data[0],
+        creator: data[0].creator
+      })
       return
     }
 
@@ -46,14 +59,15 @@ function JoinPage() {
     const user = await supabase.auth.getUser()
     try{
       const {data, error} = await supabase
-      .from("participants")
+      .from("challenge_participants")
       .insert({
         challenge_id: challenge?.id,
-        userID: user.data.user?.id
+        user_id: user.data.user?.id
       })
       if(data){
         router.push(`/challenge/${params.invite}`)
       } else {
+        console.log(error);        
         addToast({
           title: "please try again!"
         })
@@ -71,19 +85,29 @@ function JoinPage() {
   }
 
   return (
-    <div className='h-screen w-full flex items-center justify-center'>
-      <div className="h-90 w-90 border rounded-xl flex items-center justify-center flex-col gap-4">
-        <h1 className='text-xl text-center'>
-          code : {params.invite}
-        </h1> 
+    <div className='h-screen w-full flex items-start justify-center'>
+      <div className="h-90 w-90 flex items-center justify-center flex-col gap-4">
+        <div className="text-center">
+          <h1 className="text-sm">You are Invited for a challenge!</h1>
+          <div className="mt-4 flex flex-col gap-3">
+          <h1 className='text-3xl font-medium'>{challenge?.title}</h1>
+          <p className='text-default-700'>{challenge?.description}</p>
+          <span>Created by : {challenge?.creator.username}</span>
+          <span>Stake Amount: {challenge?.stake_amount} SOL</span>
+          </div>
+
+        </div>
+        <div className="flex gap-3">
         <Button 
         onPress={handelJoinChallenge}
-        variant='solid'>
+        color='primary'
+        >
           Join
         </Button>
         <Button variant='solid'>
           Cancel
         </Button>
+        </div>
       </div>
     </div>
   )

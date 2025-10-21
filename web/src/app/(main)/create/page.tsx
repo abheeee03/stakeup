@@ -31,6 +31,15 @@ function CreateChallenge() {
     setForm(prev => ({ ...prev, start_date: value }))
   }
 
+  function generateInviteCode(length: number = 8): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let code = '';
+    for (let i = 0; i < length; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -59,7 +68,7 @@ function CreateChallenge() {
       setLoading(false)
       return
     }
-
+    const invite = generateInviteCode(6)
     // Insert challenge
     const { data, error } = await supabase
       .from("challenges")
@@ -71,6 +80,7 @@ function CreateChallenge() {
           stake_amount: Number(form.stake_amount),
           duration_days: Number(form.duration_days),
           start_date: form.start_date,
+          invite_code: invite
         }
       ])
       .select('id')
